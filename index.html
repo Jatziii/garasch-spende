@@ -9,12 +9,13 @@
 <meta name="apple-mobile-web-app-title" content="Garasch">
 <title>Garasch Kasse</title>
 <style>
-  :root { --bg:#0e0e0e; --surface:#1a1a1a; --surface2:#242424; --border:rgba(255,255,255,0.08); --text:#f0f0f0; --muted:#888; --accent:#c8f542; --accent-dark:#a8d030; --radius:14px; --radius-sm:8px; }
+  :root { --bg:#0e0e0e; --surface:#1a1a1a; --surface2:#242424; --border:rgba(255,255,255,0.08); --text:#f0f0f0; --muted:#888; --accent:#c8f542; --accent-dark:#a8d030; --radius:14px; --radius-sm:8px; --danger:#ff4444; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; overflow:hidden; }
-  .app { display:flex; flex-direction:column; height:100vh; height:-webkit-fill-available; }
-  header { padding:20px 20px 16px; background:var(--bg); border-bottom:0.5px solid var(--border); flex-shrink:0; }
+  .app { display:flex; flex-direction:column; height:100vh; height:-webkit-fill-available; position:relative; }
+  header { padding:20px 20px 14px; background:var(--bg); border-bottom:0.5px solid var(--border); flex-shrink:0; display:flex; justify-content:space-between; align-items:center; }
   header h1 { font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); font-weight:400; }
+  .edit-toggle { font-size:12px; color:var(--muted); background:none; border:0.5px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; }
   .product-list { flex:1; overflow-y:auto; padding:12px 16px; -webkit-overflow-scrolling:touch; }
   .product-row { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:0.5px solid var(--border); }
   .product-row:last-child { border-bottom:none; }
@@ -36,12 +37,38 @@
   .twint-btn { flex:1; height:52px; background:var(--accent); border:none; border-radius:var(--radius); font-size:15px; font-weight:600; color:#0e0e0e; cursor:pointer; }
   .twint-btn:disabled { background:var(--surface2); color:var(--muted); cursor:default; }
   .reset-btn { width:52px; height:52px; background:var(--surface2); border:none; border-radius:var(--radius); color:var(--muted); font-size:20px; cursor:pointer; }
+  .loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+
+  .admin-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:var(--bg); flex-direction:column; z-index:10; }
+  .admin-overlay.visible { display:flex; }
+  .admin-header { padding:20px 20px 14px; border-bottom:0.5px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  .admin-header h2 { font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); font-weight:400; }
+  .close-btn { font-size:12px; color:var(--muted); background:none; border:0.5px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; }
+  .pw-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:32px; }
+  .pw-screen input { width:100%; padding:14px; background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:16px; text-align:center; outline:none; }
+  .pw-screen button { width:100%; padding:14px; background:var(--accent); border:none; border-radius:var(--radius); font-size:15px; font-weight:600; color:#0e0e0e; cursor:pointer; }
+  .pw-error { color:var(--danger); font-size:13px; }
+  .admin-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .admin-product { background:var(--surface); border-radius:var(--radius-sm); padding:12px; display:flex; align-items:center; gap:10px; }
+  .admin-product-info { flex:1; }
+  .admin-product-name { font-size:14px; color:var(--text); }
+  .admin-product-price { font-size:12px; color:var(--muted); }
+  .del-btn { width:32px; height:32px; background:none; border:0.5px solid var(--border); border-radius:6px; color:var(--danger); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .add-form { background:var(--surface); border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .add-form label { font-size:12px; color:var(--muted); }
+  .add-form input { padding:10px; background:var(--surface2); border:0.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:15px; outline:none; }
+  .add-form button { padding:12px; background:var(--accent); border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; color:#0e0e0e; cursor:pointer; }
+  .add-form button:disabled { background:var(--surface2); color:var(--muted); cursor:default; }
+  .status-msg { font-size:12px; color:var(--accent); text-align:center; min-height:16px; }
 </style>
 </head>
 <body>
-<div class="app">
-  <header><h1>Garasch Kasse</h1></header>
-  <div class="product-list" id="product-list"></div>
+<div class="app" id="main-app">
+  <header>
+    <h1>Garasch Kasse</h1>
+    <button class="edit-toggle" id="edit-toggle">Produkte &#9998;</button>
+  </header>
+  <div class="product-list" id="product-list"><div class="loading">Laden...</div></div>
   <footer>
     <div class="order-summary" id="order-summary"></div>
     <div class="total-row">
@@ -54,25 +81,85 @@
     </div>
   </footer>
 </div>
+
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-header">
+    <h2>Produkte editieren</h2>
+    <button class="close-btn" id="close-admin">Schliessen</button>
+  </div>
+  <div id="pw-screen" class="pw-screen">
+    <input type="password" id="pw-input" placeholder="Passwort" />
+    <button id="pw-submit">Weiter</button>
+    <span class="pw-error" id="pw-error"></span>
+  </div>
+  <div id="admin-body" class="admin-body" style="display:none">
+    <div id="admin-product-list"></div>
+    <div class="add-form">
+      <label>Neues Produkt</label>
+      <input type="text" id="new-name" placeholder="Name (z.B. Bier 0.5)" />
+      <input type="number" id="new-price" placeholder="Preis (z.B. 1.50)" step="0.05" min="0" />
+      <button id="add-product-btn">Hinzufügen</button>
+    </div>
+    <div class="status-msg" id="status-msg"></div>
+  </div>
+</div>
+
 <script>
 var TWINT='https://go.twint.ch/1/e/tw?tw=acq.4QzRCTJwSUqxpSDBwtqZ_F7fDDNOIZEtkoYnUMYHaNOJU4k1hJaZz0NYb2thuAL2.&trxInfo=Spende';
-var products=[
-  {id:'beer',name:'Quoellfrisch 0.33',price:1.30},
-  {id:'radler',name:'Calanda Radler 0.5',price:2.05},
-  {id:'cola',name:'Cola 0.5',price:1.32},
-  {id:'wasser',name:'Mineralwasser 3dl',price:0.30},
-  {id:'mate',name:'Club-Mate 0.5',price:1.80},
-  {id:'prosecco',name:'Prosecco 2dl',price:3.73},
-  {id:'tabak',name:'American Spirit Blau',price:7.90},
-  {id:'papes',name:'Smallpapes',price:0.40}
-];
+var BIN_ID='6a029ab0250b1311c338abf3';
+var API_KEY='$2a$10$lF1KIx5z7Hzi26MmY5f7.uaO9dU9PreiB71K0uyvXyBgc9eJNaqTG';
+var PASSWORD='edit';
+var products=[];
 var qty={};
-products.forEach(function(p){qty[p.id]=0;});
+
+function fetchProducts(){
+  fetch('https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest',{
+    headers:{'X-Master-Key':API_KEY}
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    products=data.record.products||[];
+    buildQty();
+    buildList();
+  })
+  .catch(function(){
+    document.getElementById('product-list').innerHTML='<div class="loading">Fehler beim Laden</div>';
+  });
+}
+
+function saveProducts(cb){
+  fetch('https://api.jsonbin.io/v3/b/'+BIN_ID,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
+    body:JSON.stringify({products:products})
+  })
+  .then(function(){if(cb)cb(true);})
+  .catch(function(){if(cb)cb(false);});
+}
+
+function buildQty(){
+  qty={};
+  products.forEach(function(p){qty[p.id]=0;});
+}
+
+function buildList(){
+  var list=document.getElementById('product-list');
+  list.innerHTML='';
+  if(products.length===0){list.innerHTML='<div class="loading">Keine Produkte</div>';return;}
+  products.forEach(function(p){
+    var row=document.createElement('div');
+    row.className='product-row';
+    row.innerHTML='<div class="product-info"><div class="product-name">'+p.name+'</div><div class="product-price">CHF '+parseFloat(p.price).toFixed(2)+'</div></div><div class="qty-control"><button class="qty-btn" data-id="'+p.id+'" data-dir="-1">-</button><div class="qty-num" id="num-'+p.id+'">0</div><button class="qty-btn" data-id="'+p.id+'" data-dir="1">+</button></div>';
+    list.appendChild(row);
+  });
+}
+
 function render(){
   var total=0,lines=[];
   products.forEach(function(p){
     var el=document.getElementById('num-'+p.id);
-    if(qty[p.id]>0){total+=qty[p.id]*p.price;lines.push(qty[p.id]+'x '+p.name);el.textContent=qty[p.id];el.className='qty-num active';}
+    if(!el)return;
+    if(qty[p.id]>0){total+=qty[p.id]*parseFloat(p.price);lines.push(qty[p.id]+'x '+p.name);el.textContent=qty[p.id];el.className='qty-num active';}
     else{el.textContent='0';el.className='qty-num';}
   });
   document.getElementById('total').textContent='CHF '+total.toFixed(2);
@@ -81,28 +168,97 @@ function render(){
   btn.disabled=total===0;
   btn.setAttribute('data-total',total.toFixed(2));
 }
-function buildList(){
-  var list=document.getElementById('product-list');
-  products.forEach(function(p){
-    var row=document.createElement('div');
-    row.className='product-row';
-    row.innerHTML='<div class="product-info"><div class="product-name">'+p.name+'</div><div class="product-price">CHF '+p.price.toFixed(2)+'</div></div><div class="qty-control"><button class="qty-btn" data-id="'+p.id+'" data-dir="-1">-</button><div class="qty-num" id="num-'+p.id+'">0</div><button class="qty-btn" data-id="'+p.id+'" data-dir="1">+</button></div>';
-    list.appendChild(row);
-  });
-}
+
 document.getElementById('product-list').addEventListener('click',function(e){
   var b=e.target;if(!b.getAttribute('data-id'))return;
   var id=b.getAttribute('data-id'),dir=parseInt(b.getAttribute('data-dir'));
-  qty[id]=Math.max(0,qty[id]+dir);render();
+  qty[id]=Math.max(0,(qty[id]||0)+dir);render();
 });
+
 document.getElementById('twint-btn').addEventListener('click',function(){
   var t=parseFloat(this.getAttribute('data-total'));
   if(t>0)window.location.href=TWINT+'&amount='+t.toFixed(2);
 });
+
 document.getElementById('reset-btn').addEventListener('click',function(){
-  products.forEach(function(p){qty[p.id]=0;});render();
+  buildQty();render();
 });
-buildList();render();
+
+document.getElementById('edit-toggle').addEventListener('click',function(){
+  document.getElementById('admin-overlay').classList.add('visible');
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw-error').textContent='';
+  document.getElementById('pw-screen').style.display='flex';
+  document.getElementById('admin-body').style.display='none';
+});
+
+document.getElementById('close-admin').addEventListener('click',function(){
+  document.getElementById('admin-overlay').classList.remove('visible');
+  buildList();render();
+});
+
+document.getElementById('pw-submit').addEventListener('click',function(){
+  if(document.getElementById('pw-input').value===PASSWORD){
+    document.getElementById('pw-screen').style.display='none';
+    document.getElementById('admin-body').style.display='flex';
+    renderAdminList();
+  } else {
+    document.getElementById('pw-error').textContent='Falsches Passwort';
+  }
+});
+
+document.getElementById('pw-input').addEventListener('keydown',function(e){
+  if(e.key==='Enter')document.getElementById('pw-submit').click();
+});
+
+function setStatus(msg,ok){
+  var el=document.getElementById('status-msg');
+  el.textContent=msg;
+  el.style.color=ok?'var(--accent)':'var(--danger)';
+}
+
+function renderAdminList(){
+  var list=document.getElementById('admin-product-list');
+  list.innerHTML='';
+  products.forEach(function(p,i){
+    var row=document.createElement('div');
+    row.className='admin-product';
+    row.innerHTML='<div class="admin-product-info"><div class="admin-product-name">'+p.name+'</div><div class="admin-product-price">CHF '+parseFloat(p.price).toFixed(2)+'</div></div><button class="del-btn" data-i="'+i+'">&times;</button>';
+    list.appendChild(row);
+  });
+  list.onclick=function(e){
+    var b=e.target.closest('.del-btn');if(!b)return;
+    var i=parseInt(b.getAttribute('data-i'));
+    products.splice(i,1);
+    setStatus('Speichern...',true);
+    saveProducts(function(ok){
+      setStatus(ok?'Gespeichert':'Fehler beim Speichern',ok);
+      renderAdminList();
+    });
+  };
+}
+
+document.getElementById('add-product-btn').addEventListener('click',function(){
+  var name=document.getElementById('new-name').value.trim();
+  var price=parseFloat(document.getElementById('new-price').value);
+  if(!name||isNaN(price)||price<=0){setStatus('Name und Preis eingeben',false);return;}
+  var id='p'+Date.now();
+  products.push({id:id,name:name,price:price});
+  var btn=document.getElementById('add-product-btn');
+  btn.disabled=true;
+  setStatus('Speichern...',true);
+  saveProducts(function(ok){
+    btn.disabled=false;
+    setStatus(ok?'Gespeichert':'Fehler beim Speichern',ok);
+    if(ok){
+      document.getElementById('new-name').value='';
+      document.getElementById('new-price').value='';
+      renderAdminList();
+    }
+  });
+});
+
+fetchProducts();
 </script>
 </body>
 </html>
