@@ -19,6 +19,7 @@ exports.handler = async function(event) {
   });
 
   const data = await response.json();
+  console.log('API response:', JSON.stringify(data));
   const raw = data.content[0].text.trim();
   const match = raw.match(/\d+\.?\d*/);
   const price = match ? match[0] : '0.00';
