@@ -13,7 +13,7 @@ exports.handler = async function(event) {
       max_tokens: 20,
       messages: [{
         role: 'user',
-        content: 'Schweizer Einkaufspreis (Detailhandel Multipack) für: ' + product + '. Antworte NUR mit einer Zahl ohne CHF, z.B.: 1.50'
+        content: 'Schätze den typischen Schweizer Detailhandelspreis für: ' + product + '. Antworte NUR mit einer Zahl (CHF), z.B.: 1.50. Gib immer eine Schätzung an, auch wenn du unsicher bist.'
       }]
     })
   });
