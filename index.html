@@ -119,8 +119,18 @@
 </div>
 
 <script>
-var TWINT='https://go.twint.ch/1/e/tw?tw=acq.4QzRCTJwSUqxpSDBwtqZ_F7fDDNOIZEtkoYnUMYHaNOJU4k1hJaZz0NYb2thuAL2.&trxInfo=Spende';
+var TWINT_BASE='https://go.twint.ch/1/e/tw?tw=acq.4QzRCTJwSUqxpSDBwtqZ_F7fDDNOIZEtkoYnUMYHaNOJU4k1hJaZz0NYb2thuAL2.';
 var BIN_ID='6a029ab0250b1311c338abf3';
+
+var kassenName=localStorage.getItem('kassenName');
+if(!kassenName){
+  kassenName=prompt('Kassennamen eingeben (z.B. jotse):');
+  if(kassenName)localStorage.setItem('kassenName',kassenName.trim());
+}
+function getTwintLink(){
+  var info=encodeURIComponent('Spende '+(kassenName||'')+ ' über Kassenapp');
+  return TWINT_BASE+'&trxInfo='+info;
+}
 var API_KEY='$2a$10$2UOEI8w6eoKzjNNw2yEBu.6QtjiMsTwUKPFJpGqrDLGERdnDhgeiq';
 var PASSWORD='edit';
 var products=[];
@@ -187,7 +197,7 @@ document.getElementById('product-list').addEventListener('click',function(e){
 
 document.getElementById('twint-btn').addEventListener('click',function(){
   var t=parseFloat(this.getAttribute('data-total'));
-  if(t>0)window.location.href=TWINT+'&amount='+t.toFixed(2);
+  if(t>0)window.location.href=getTwintLink()+'&amount='+t.toFixed(2);
 });
 
 document.getElementById('reset-btn').addEventListener('click',function(){buildQty();render();});
