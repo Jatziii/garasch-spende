@@ -55,10 +55,17 @@
   .admin-product-price { font-size:12px; color:var(--muted); }
   .del-btn { width:32px; height:32px; background:none; border:0.5px solid var(--border); border-radius:6px; color:var(--danger); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .add-form { background:var(--surface); border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; }
-  .add-form label { font-size:12px; color:var(--muted); }
+  .add-form label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
   .add-form input { padding:10px; background:var(--surface2); border:0.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:15px; outline:none; }
-  .add-form button { padding:12px; background:var(--accent); border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; color:#0e0e0e; cursor:pointer; }
-  .add-form button:disabled { background:var(--surface2); color:var(--muted); cursor:default; }
+  .search-row { display:flex; gap:8px; }
+  .search-row input { flex:1; }
+  .search-btn { padding:10px 14px; background:var(--surface2); border:0.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:13px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .search-btn:disabled { opacity:0.4; cursor:default; }
+  .price-suggestion { background:var(--surface2); border-radius:var(--radius-sm); padding:10px 12px; font-size:13px; color:var(--muted); display:none; }
+  .price-suggestion span { color:var(--accent); font-weight:600; }
+  .use-price-btn { background:none; border:0.5px solid var(--accent); border-radius:var(--radius-sm); color:var(--accent); font-size:12px; padding:4px 10px; cursor:pointer; margin-left:8px; }
+  .add-form button.save-btn { padding:12px; background:var(--accent); border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; color:#0e0e0e; cursor:pointer; }
+  .add-form button.save-btn:disabled { background:var(--surface2); color:var(--muted); cursor:default; }
   .status-msg { font-size:12px; color:var(--accent); text-align:center; min-height:16px; }
 </style>
 </head>
@@ -96,9 +103,16 @@
     <div id="admin-product-list"></div>
     <div class="add-form">
       <label>Neues Produkt</label>
-      <input type="text" id="new-name" placeholder="Name (z.B. Bier 0.5)" />
-      <input type="number" id="new-price" placeholder="Preis (z.B. 1.50)" step="0.05" min="0" />
-      <button id="add-product-btn">Hinzufügen</button>
+      <div class="search-row">
+        <input type="text" id="new-name" placeholder="Name (z.B. Calanda Radler 0.5l)" />
+        <button class="search-btn" id="search-price-btn">Preis suchen</button>
+      </div>
+      <div class="price-suggestion" id="price-suggestion">
+        Vorschlag: <span id="suggested-price"></span>
+        <button class="use-price-btn" id="use-price-btn">Übernehmen</button>
+      </div>
+      <input type="number" id="new-price" placeholder="Preis in CHF (z.B. 1.50)" step="0.05" min="0" />
+      <button class="save-btn" id="add-product-btn">Hinzufügen</button>
     </div>
     <div class="status-msg" id="status-msg"></div>
   </div>
@@ -119,8 +133,7 @@ function fetchProducts(){
   .then(function(r){return r.json();})
   .then(function(data){
     products=data.record.products||[];
-    buildQty();
-    buildList();
+    buildQty();buildList();
   })
   .catch(function(){
     document.getElementById('product-list').innerHTML='<div class="loading">Fehler beim Laden</div>';
@@ -137,10 +150,7 @@ function saveProducts(cb){
   .catch(function(){if(cb)cb(false);});
 }
 
-function buildQty(){
-  qty={};
-  products.forEach(function(p){qty[p.id]=0;});
-}
+function buildQty(){qty={};products.forEach(function(p){qty[p.id]=0;});}
 
 function buildList(){
   var list=document.getElementById('product-list');
@@ -180,9 +190,7 @@ document.getElementById('twint-btn').addEventListener('click',function(){
   if(t>0)window.location.href=TWINT+'&amount='+t.toFixed(2);
 });
 
-document.getElementById('reset-btn').addEventListener('click',function(){
-  buildQty();render();
-});
+document.getElementById('reset-btn').addEventListener('click',function(){buildQty();render();});
 
 document.getElementById('edit-toggle').addEventListener('click',function(){
   document.getElementById('admin-overlay').classList.add('visible');
@@ -231,12 +239,41 @@ function renderAdminList(){
     var i=parseInt(b.getAttribute('data-i'));
     products.splice(i,1);
     setStatus('Speichern...',true);
-    saveProducts(function(ok){
-      setStatus(ok?'Gespeichert':'Fehler beim Speichern',ok);
-      renderAdminList();
-    });
+    saveProducts(function(ok){setStatus(ok?'Gespeichert':'Fehler',ok);renderAdminList();});
   };
 }
+
+document.getElementById('search-price-btn').addEventListener('click',function(){
+  var name=document.getElementById('new-name').value.trim();
+  if(!name){setStatus('Produktname eingeben',false);return;}
+  var btn=this;
+  btn.disabled=true;
+  btn.textContent='Suche...';
+  setStatus('',true);
+  document.getElementById('price-suggestion').style.display='none';
+  fetch('/.netlify/functions/search-price',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({product:name})
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.disabled=false;
+    btn.textContent='Preis suchen';
+    var price=data.price;
+    document.getElementById('suggested-price').textContent='CHF '+price;
+    document.getElementById('price-suggestion').style.display='block';
+    document.getElementById('use-price-btn').onclick=function(){
+      document.getElementById('new-price').value=price;
+      document.getElementById('price-suggestion').style.display='none';
+    };
+  })
+  .catch(function(){
+    btn.disabled=false;
+    btn.textContent='Preis suchen';
+    setStatus('Fehler bei der Suche',false);
+  });
+});
 
 document.getElementById('add-product-btn').addEventListener('click',function(){
   var name=document.getElementById('new-name').value.trim();
@@ -244,8 +281,7 @@ document.getElementById('add-product-btn').addEventListener('click',function(){
   if(!name||isNaN(price)||price<=0){setStatus('Name und Preis eingeben',false);return;}
   var id='p'+Date.now();
   products.push({id:id,name:name,price:price});
-  var btn=document.getElementById('add-product-btn');
-  btn.disabled=true;
+  var btn=this;btn.disabled=true;
   setStatus('Speichern...',true);
   saveProducts(function(ok){
     btn.disabled=false;
@@ -253,6 +289,7 @@ document.getElementById('add-product-btn').addEventListener('click',function(){
     if(ok){
       document.getElementById('new-name').value='';
       document.getElementById('new-price').value='';
+      document.getElementById('price-suggestion').style.display='none';
       renderAdminList();
     }
   });
